@@ -88,7 +88,7 @@ function App() {
     event.target.value = ''
   }
 
-  // Get all unique field paths (including nested) across all JSON objects
+  // Get all unique field paths (including nested and within arrays) across all JSON objects
   const getAllFieldPaths = (obj, prefix = '') => {
     const paths = []
     
@@ -96,7 +96,16 @@ function App() {
       return [prefix]
     }
     
-    if (typeof obj !== 'object' || Array.isArray(obj)) {
+    // Handle arrays - extract fields from first item as template
+    if (Array.isArray(obj)) {
+      if (obj.length > 0 && typeof obj[0] === 'object' && obj[0] !== null) {
+        // Get paths from first array element
+        return getAllFieldPaths(obj[0], prefix)
+      }
+      return [prefix]
+    }
+    
+    if (typeof obj !== 'object') {
       return [prefix]
     }
     
@@ -104,7 +113,7 @@ function App() {
       const newPrefix = prefix ? `${prefix}.${key}` : key
       const value = obj[key]
       
-      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      if (value !== null && typeof value === 'object') {
         paths.push(...getAllFieldPaths(value, newPrefix))
       } else {
         paths.push(newPrefix)
@@ -131,6 +140,17 @@ function App() {
       if (current === null || current === undefined) {
         return undefined
       }
+      
+      // If current is an array, extract from all items
+      if (Array.isArray(current)) {
+        return current.map(item => {
+          if (item && typeof item === 'object') {
+            return item[key]
+          }
+          return undefined
+        })
+      }
+      
       current = current[key]
     }
     
