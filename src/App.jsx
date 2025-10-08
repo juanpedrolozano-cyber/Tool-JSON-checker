@@ -4,10 +4,12 @@ import { Plus, Trash2, CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronR
 function App() {
   const [jsonItems, setJsonItems] = useState([])
   const [inputText, setInputText] = useState('')
+  const [templateText, setTemplateText] = useState('')
+  const [templateFields, setTemplateFields] = useState(null)
   const [error, setError] = useState('')
+  const [templateError, setTemplateError] = useState('')
   const [expandedItems, setExpandedItems] = useState({})
   const [isDragging, setIsDragging] = useState(false)
-  const [ignoredFields, setIgnoredFields] = useState(new Set())
   const fileInputRef = useRef(null)
 
   const addJsonItem = () => {
@@ -186,18 +188,25 @@ function App() {
     }
   }
 
-  const toggleFieldIgnored = (fieldPath) => {
-    const newIgnored = new Set(ignoredFields)
-    if (newIgnored.has(fieldPath)) {
-      newIgnored.delete(fieldPath)
-    } else {
-      newIgnored.add(fieldPath)
+  const setTemplate = () => {
+    setTemplateError('')
+    try {
+      const parsed = JSON.parse(templateText)
+      const paths = getAllFieldPaths(parsed)
+      setTemplateFields(paths)
+    } catch (e) {
+      setTemplateError('Invalid JSON template: ' + e.message)
     }
-    setIgnoredFields(newIgnored)
+  }
+
+  const clearTemplate = () => {
+    setTemplateText('')
+    setTemplateFields(null)
+    setTemplateError('')
   }
 
   const fields = getAllFields()
-  const activeFields = fields.filter(field => !ignoredFields.has(field))
+  const activeFields = templateFields ? templateFields : fields
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -213,45 +222,49 @@ function App() {
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">Compare balance validation files and identify field differences with precision</p>
         </div>
 
-        {/* Field Filter Section */}
-        {fields.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <Eye className="text-white" size={18} />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-800">Field Filters</h2>
-              </div>
-              <div className="text-sm text-slate-600">
-                <span className="font-semibold">{activeFields.length}</span> of <span className="font-semibold">{fields.length}</span> fields active
-              </div>
+        {/* Template Section */}
+        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+              <CheckCircle2 className="text-white" size={18} />
             </div>
-            <div className="flex flex-wrap gap-2">
-              {fields.map(field => {
-                const isIgnored = ignoredFields.has(field)
-                return (
-                  <button
-                    key={field}
-                    onClick={() => toggleFieldIgnored(field)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all hover:shadow-md ${
-                      isIgnored
-                        ? 'border-slate-300 bg-slate-100 text-slate-500 hover:border-slate-400'
-                        : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300'
-                    }`}
-                  >
-                    {isIgnored ? (
-                      <EyeOff size={16} className="flex-shrink-0" />
-                    ) : (
-                      <Eye size={16} className="flex-shrink-0" />
-                    )}
-                    <span className="text-sm font-medium break-all">{field}</span>
-                  </button>
-                )
-              })}
-            </div>
+            <h2 className="text-2xl font-bold text-slate-800">Comparison Template</h2>
           </div>
-        )}
+          <p className="text-sm text-slate-600 mb-4">
+            Paste a JSON template to define which fields to compare. Only fields present in the template will be validated.
+            {templateFields && <span className="font-semibold text-green-600 ml-2">✓ Template active ({templateFields.length} fields)</span>}
+          </p>
+          <textarea
+            value={templateText}
+            onChange={(e) => setTemplateText(e.target.value)}
+            placeholder={`Paste your JSON template here, e.g.:\n{\n  "activities": [{\n    "year": 2023,\n    "employer": "Company",\n    "salary_amount": 100000\n  }]\n}`}
+            className="w-full h-40 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm mb-3"
+          />
+          {templateError && (
+            <div className="flex items-center gap-2 text-red-600 bg-red-50 px-4 py-2 rounded-lg mb-3">
+              <AlertCircle size={18} />
+              <span className="text-sm">{templateError}</span>
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={setTemplate}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
+            >
+              <CheckCircle2 size={20} />
+              Set Template
+            </button>
+            {templateFields && (
+              <button
+                onClick={clearTemplate}
+                className="flex items-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-all duration-200 font-semibold"
+              >
+                <XCircle size={20} />
+                Clear Template
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Field Comparison - Moved to Top */}
         {activeFields.length > 0 && (
