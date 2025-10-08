@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Plus, Trash2, CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Upload } from 'lucide-react'
+import { Plus, Trash2, CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronRight, Upload, Eye, EyeOff } from 'lucide-react'
 
 function App() {
   const [jsonItems, setJsonItems] = useState([])
@@ -7,6 +7,7 @@ function App() {
   const [error, setError] = useState('')
   const [expandedItems, setExpandedItems] = useState({})
   const [isDragging, setIsDragging] = useState(false)
+  const [ignoredFields, setIgnoredFields] = useState(new Set())
   const fileInputRef = useRef(null)
 
   const addJsonItem = () => {
@@ -165,7 +166,18 @@ function App() {
     }
   }
 
+  const toggleFieldIgnored = (fieldPath) => {
+    const newIgnored = new Set(ignoredFields)
+    if (newIgnored.has(fieldPath)) {
+      newIgnored.delete(fieldPath)
+    } else {
+      newIgnored.add(fieldPath)
+    }
+    setIgnoredFields(newIgnored)
+  }
+
   const fields = getAllFields()
+  const activeFields = fields.filter(field => !ignoredFields.has(field))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -181,8 +193,48 @@ function App() {
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">Compare balance validation files and identify field differences with precision</p>
         </div>
 
-        {/* Field Comparison - Moved to Top */}
+        {/* Field Filter Section */}
         {fields.length > 0 && (
+          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                  <Eye className="text-white" size={18} />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800">Field Filters</h2>
+              </div>
+              <div className="text-sm text-slate-600">
+                <span className="font-semibold">{activeFields.length}</span> of <span className="font-semibold">{fields.length}</span> fields active
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {fields.map(field => {
+                const isIgnored = ignoredFields.has(field)
+                return (
+                  <button
+                    key={field}
+                    onClick={() => toggleFieldIgnored(field)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all hover:shadow-md ${
+                      isIgnored
+                        ? 'border-slate-300 bg-slate-100 text-slate-500 hover:border-slate-400'
+                        : 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300'
+                    }`}
+                  >
+                    {isIgnored ? (
+                      <EyeOff size={16} className="flex-shrink-0" />
+                    ) : (
+                      <Eye size={16} className="flex-shrink-0" />
+                    )}
+                    <span className="text-sm font-medium break-all">{field}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Field Comparison - Moved to Top */}
+        {activeFields.length > 0 && (
           <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
@@ -191,7 +243,7 @@ function App() {
               <h2 className="text-2xl font-bold text-slate-800">Field Comparison Results</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {fields.map(field => {
+              {activeFields.map(field => {
                 const comparison = compareField(field)
                 return (
                   <div
